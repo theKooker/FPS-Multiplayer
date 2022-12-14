@@ -12,7 +12,7 @@ public class AnimationImportUtils
             string path = AssetDatabase.GUIDToAssetPath(guid);
             AssetImporter importer = AssetImporter.GetAtPath(path);
             string fileName = Path.GetFileNameWithoutExtension(path);
-            if (importer is not ModelImporter) {
+            if (!(importer is ModelImporter)) {
                 Debug.LogError("Asset is not a Model");
                 continue;
             }
@@ -31,7 +31,7 @@ public class AnimationImportUtils
         foreach(var guid in Selection.assetGUIDs) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             AssetImporter importer = AssetImporter.GetAtPath(path);
-            if (importer is not ModelImporter) {
+            if (!(importer is ModelImporter)) {
                 Debug.LogError("Asset is not a Model");
                 continue;
             }
