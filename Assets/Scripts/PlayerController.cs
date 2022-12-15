@@ -1,10 +1,13 @@
-﻿using Photon.Pun;
+﻿#define MOHAMED_ANIMATION
+
+using Photon.Pun;
 using Photon.Realtime;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Hashtable = ExitGames.Client.Photon.Hashtable;
+using System;
 
 public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 {
@@ -35,12 +38,39 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 
 	PlayerManager playerManager;
 
+	[Header("Crouch")]
+	private float _crouch;
+    public float Crouched => _crouch;
+    [SerializeField] private float crouchSpeed;
+
+    [SerializeField, Min(0f)] private float crouchDistance;
+    private Vector3 initialCameraPosition;
+    private float initialHeight;
+    private float initialCenter;
+	private CapsuleCollider capsuleCollider;
+
+	// Animation Interface
+	public event Action OnJump;
+    public bool Grounded => grounded;
+	public float MaxSpeed => sprintSpeed;
+	public Vector3 Velocity => _velocity;
+	private Vector3 _velocity;
+	private Vector3 _oldPosition;
+
 	void Awake()
 	{
 		rb = GetComponent<Rigidbody>();
 		PV = GetComponent<PhotonView>();
+		capsuleCollider = GetComponent<CapsuleCollider>();
 		
 		playerManager = PhotonView.Find((int)PV.InstantiationData[0]).GetComponent<PlayerManager>();
+	
+		// Crouch
+		initialCameraPosition = cameraHolder.transform.localPosition;
+		initialHeight = capsuleCollider.height;
+		initialCenter = capsuleCollider.center.y;
+		_velocity = Vector3.zero;
+		_oldPosition = transform.position;
 	}
 
 	void Start()
@@ -65,6 +95,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 		Look();
 		Move();
 		Jump();
+		Crouch();
 
 		for(int i = 0; i < items.Length; i++)
 		{
@@ -109,6 +140,11 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 		}
 	}
 
+	private void LateUpdate() {
+		_velocity = transform.position - _oldPosition;
+		_oldPosition = transform.position;
+	}
+
 	void Look()
 	{
 		transform.Rotate(Vector3.up * Input.GetAxisRaw("Mouse X") * mouseSensitivity);
@@ -122,6 +158,13 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 	void Move()
 	{
 		Vector3 moveDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical")).normalized;
+#if MOHAMED_ANIMATION
+		UpdateAnimationsMohamed(moveDir);
+#endif
+		moveAmount = Vector3.SmoothDamp(moveAmount, moveDir * (Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed), ref smoothMoveVelocity, smoothTime);
+	}
+
+	private void UpdateAnimationsMohamed(Vector3 moveDir) {
 		if(moveDir.x != 0)
 		{
             animator.SetInteger("Status", 0);
@@ -132,7 +175,6 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 			} else
 			{
                 animator.SetInteger("Right", 1);
-
             }
         } else if (moveDir.z != 0)
         {
@@ -150,24 +192,62 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 		{
             animator.SetInteger("Right", 0);
             animator.SetInteger("Status", 0);
-			
         }
-		moveAmount = Vector3.SmoothDamp(moveAmount, moveDir * (Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed), ref smoothMoveVelocity, smoothTime);
 	}
 
 	void Jump()
 	{
 		if(Input.GetKeyDown(KeyCode.Space) && grounded)
 		{
+#if MOHAMED_ANIMATION
             animator.SetInteger("Right", 0);
             animator.SetInteger("Status", 0);
 			animator.SetBool("Jump", true);
+#endif
 			rb.AddForce(transform.up * jumpForce);
+			OnJump?.Invoke();
 		} else
 		{
+#if MOHAMED_ANIMATION
             animator.SetBool("Jump", false);
+#endif
         }
 	}
+
+	private void Crouch() {
+		float newCrouch;
+        if (Input.GetKey(KeyCode.LeftControl))
+            newCrouch = Mathf.Min(_crouch + crouchSpeed * Time.deltaTime, 1f);
+        else
+            newCrouch = Mathf.Max(_crouch - crouchSpeed * Time.deltaTime, 0f);
+        SetCrouch(newCrouch);
+	}
+
+	private void SetCrouch(float value) {
+        if (value == _crouch)
+			return;
+
+		photonView.RPC(nameof(CrouchUpdate), RpcTarget.All, value);
+    }
+
+    [PunRPC]
+    private void CrouchUpdate(float value, PhotonMessageInfo info) {
+        CrouchHightAdjustment(_crouch, value);
+        _crouch = value;
+    }
+
+	private void CrouchHightAdjustment(float oldValue, float newValue) {
+        // Move camera
+        Vector3 cameraPosition = initialCameraPosition;
+        cameraPosition.y = cameraPosition.y - crouchDistance * _crouch;
+        cameraHolder.transform.localPosition = cameraPosition;
+
+        // Resize CharacterController
+        capsuleCollider.height = initialHeight - crouchDistance * _crouch;
+        Vector3 center = capsuleCollider.center;
+        center.y = initialCenter - crouchDistance * _crouch * 0.5f;
+        capsuleCollider.center = center;
+    }
 
 	void EquipItem(int _index)
 	{
