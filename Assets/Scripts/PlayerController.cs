@@ -1,6 +1,4 @@
-﻿#define MOHAMED_ANIMATION
-
-using Photon.Pun;
+﻿using Photon.Pun;
 using Photon.Realtime;
 using System.Collections;
 using System.Collections.Generic;
@@ -29,8 +27,6 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 	Vector3 smoothMoveVelocity;
 	Vector3 moveAmount;
 
-	Rigidbody rb;
-
 	PhotonView PV;
 
 	const float maxHealth = 100f;
@@ -47,11 +43,10 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
     private Vector3 initialCameraPosition;
     private float initialHeight;
     private float initialCenter;
-	private CapsuleCollider capsuleCollider;
 
 	// Animation Interface
 	public event Action OnJump;
-    public bool Grounded => grounded;
+    public bool Grounded => _cc.isGrounded;
 	public float MaxSpeed => sprintSpeed;
 	public Vector3 Velocity => _velocity;
 	private Vector3 _velocity;
@@ -59,18 +54,26 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 
 	[SerializeField] private bool test = false;
 
+	private CharacterController _cc;
+	private float _yVelocity;
+    private const float GROUNDING_FORCE = -0.01f;
+
+	public override void OnEnable() {
+		base.OnEnable();
+		_yVelocity = GROUNDING_FORCE;
+	}
+
 	void Awake()
 	{
-		rb = GetComponent<Rigidbody>();
+		_cc = GetComponent<CharacterController>();
 		PV = GetComponent<PhotonView>();
-		capsuleCollider = GetComponent<CapsuleCollider>();
 		if (!test)
 			playerManager = PhotonView.Find((int)PV.InstantiationData[0]).GetComponent<PlayerManager>();
 	
 		// Crouch
 		initialCameraPosition = cameraHolder.transform.localPosition;
-		initialHeight = capsuleCollider.height;
-		initialCenter = capsuleCollider.center.y;
+		initialHeight = _cc.height;
+		initialCenter = _cc.center.y;
 		_velocity = Vector3.zero;
 		_oldPosition = transform.position;
 	}
@@ -84,7 +87,6 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 		else
 		{
 			Destroy(GetComponentInChildren<Camera>().gameObject);
-			Destroy(rb);
 			Destroy(ui);
 		}
 	}
@@ -159,61 +161,24 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 
 	void Move()
 	{
+		// Gravity
+        if (_cc.isGrounded && _yVelocity < 0f)
+            _yVelocity = GROUNDING_FORCE;
+        _yVelocity += Physics.gravity.y * Time.deltaTime;
+
 		Vector3 moveDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical")).normalized;
-#if MOHAMED_ANIMATION
-		UpdateAnimationsMohamed(moveDir);
-#endif
 		moveAmount = Vector3.SmoothDamp(moveAmount, moveDir * (Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed), ref smoothMoveVelocity, smoothTime);
-	}
 
-	private void UpdateAnimationsMohamed(Vector3 moveDir) {
-		if(moveDir.x != 0)
-		{
-            animator.SetInteger("Status", 0);
-
-            if (moveDir.x < 0)
-			{
-				animator.SetInteger("Right", -1);
-			} else
-			{
-                animator.SetInteger("Right", 1);
-            }
-        } else if (moveDir.z != 0)
-        {
-            animator.SetInteger("Right", 0);
-            if (moveDir.z < 0)
-            {
-                animator.SetInteger("Status", -1);
-            }
-            else
-            {
-                animator.SetInteger("Status", 1);
-
-            }
-        } else
-		{
-            animator.SetInteger("Right", 0);
-            animator.SetInteger("Status", 0);
-        }
+		_cc.Move((transform.rotation * moveAmount + new Vector3(0f, _yVelocity, 0f)) * Time.deltaTime);
 	}
 
 	void Jump()
 	{
-		if(Input.GetKeyDown(KeyCode.Space) && grounded)
+		if(Input.GetKeyDown(KeyCode.Space) && _cc.isGrounded)
 		{
-#if MOHAMED_ANIMATION
-            animator.SetInteger("Right", 0);
-            animator.SetInteger("Status", 0);
-			animator.SetBool("Jump", true);
-#endif
-			rb.AddForce(transform.up * jumpForce);
+			_yVelocity += jumpForce;
 			OnJump?.Invoke();
-		} else
-		{
-#if MOHAMED_ANIMATION
-            animator.SetBool("Jump", false);
-#endif
-        }
+		}
 	}
 
 	private void Crouch() {
@@ -248,11 +213,11 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
         cameraPosition.y = cameraPosition.y - crouchDistance * _crouch;
         cameraHolder.transform.localPosition = cameraPosition;
 
-        // Resize CharacterController
-        capsuleCollider.height = initialHeight - crouchDistance * _crouch;
-        Vector3 center = capsuleCollider.center;
+		// Resize CharacterController
+        _cc.height = initialHeight - crouchDistance * _crouch;
+        Vector3 center = _cc.center;
         center.y = initialCenter - crouchDistance * _crouch * 0.5f;
-        capsuleCollider.center = center;
+        _cc.center = center;
     }
 
 	void EquipItem(int _index)
@@ -296,8 +261,6 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 	{
 		if(!IsMineProxy())
 			return;
-
-		rb.MovePosition(rb.position + transform.TransformDirection(moveAmount) * Time.fixedDeltaTime);
 	}
 
 	public void TakeDamage(float damage)
