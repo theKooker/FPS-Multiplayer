@@ -57,13 +57,15 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 	private Vector3 _velocity;
 	private Vector3 _oldPosition;
 
+	[SerializeField] private bool test = false;
+
 	void Awake()
 	{
 		rb = GetComponent<Rigidbody>();
 		PV = GetComponent<PhotonView>();
 		capsuleCollider = GetComponent<CapsuleCollider>();
-		
-		playerManager = PhotonView.Find((int)PV.InstantiationData[0]).GetComponent<PlayerManager>();
+		if (!test)
+			playerManager = PhotonView.Find((int)PV.InstantiationData[0]).GetComponent<PlayerManager>();
 	
 		// Crouch
 		initialCameraPosition = cameraHolder.transform.localPosition;
@@ -75,7 +77,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 
 	void Start()
 	{
-		if(PV.IsMine)
+		if(IsMineProxy())
 		{
 			EquipItem(0);
 		}
@@ -89,7 +91,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 
 	void Update()
 	{
-		if(!PV.IsMine)
+		if(!IsMineProxy())
 			return;
 
 		Look();
@@ -227,7 +229,11 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
         if (value == _crouch)
 			return;
 
-		photonView.RPC(nameof(CrouchUpdate), RpcTarget.All, value);
+		if (test) {
+			CrouchUpdate(value, new PhotonMessageInfo());
+		}
+		else
+			photonView.RPC(nameof(CrouchUpdate), RpcTarget.All, value);
     }
 
     [PunRPC]
@@ -265,7 +271,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 
 		previousItemIndex = itemIndex;
 
-		if(PV.IsMine)
+		if(IsMineProxy())
 		{
 			Hashtable hash = new Hashtable();
 			hash.Add("itemIndex", itemIndex);
@@ -275,7 +281,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 
 	public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
 	{
-		if(changedProps.ContainsKey("itemIndex") && !PV.IsMine && targetPlayer == PV.Owner)
+		if(changedProps.ContainsKey("itemIndex") && !IsMineProxy() && targetPlayer == PV.Owner)
 		{
 			EquipItem((int)changedProps["itemIndex"]);
 		}
@@ -288,7 +294,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 
 	void FixedUpdate()
 	{
-		if(!PV.IsMine)
+		if(!IsMineProxy())
 			return;
 
 		rb.MovePosition(rb.position + transform.TransformDirection(moveAmount) * Time.fixedDeltaTime);
@@ -309,12 +315,18 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 		if(currentHealth <= 0)
 		{
 			Die();
-			PlayerManager.Find(info.Sender).GetKill();
+			if (!test)
+				PlayerManager.Find(info.Sender).GetKill();
 		}
 	}
 
 	void Die()
 	{
-		playerManager.Die();
+		if (!test)
+			playerManager.Die();
+	}
+
+	private bool IsMineProxy() {
+		return test || PV.IsMine;
 	}
 }
