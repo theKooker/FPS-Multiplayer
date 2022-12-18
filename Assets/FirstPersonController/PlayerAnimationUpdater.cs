@@ -15,7 +15,6 @@ public class PlayerAnimationUpdater : MonoBehaviourPunCallbacks
     private readonly static int ANIM_GROUNDED = Animator.StringToHash("grounded");
 
     [SerializeField] private float transitionSpeed;
-    [SerializeField] private float movementThreshold;
     private float _animatorSpeed;
     private Vector2 _animatorMovement;
     [SerializeField] private PlayerController playerController;
@@ -48,8 +47,6 @@ public class PlayerAnimationUpdater : MonoBehaviourPunCallbacks
     private void UpdateAnimator() {
         Vector3 localVelocity = Quaternion.Inverse(transform.rotation) * playerController.Velocity;
         Vector2 planeVelocity = new Vector2(localVelocity.x, localVelocity.z);
-        if (planeVelocity.sqrMagnitude < movementThreshold * movementThreshold)
-            planeVelocity = Vector2.zero;
         // Movement Direction
         Vector2 movementChange = (planeVelocity.normalized - _animatorMovement) * Time.deltaTime;
         _animatorMovement += movementChange * transitionSpeed;
