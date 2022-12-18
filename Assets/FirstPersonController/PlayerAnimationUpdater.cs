@@ -26,8 +26,7 @@ public class PlayerAnimationUpdater : MonoBehaviourPunCallbacks
     }
 
     private void Start() {
-        enabled = true;
-        //enabled = pView.IsMine;
+        enabled = pView.IsMine;
     }
 
     private void LateUpdate() {
