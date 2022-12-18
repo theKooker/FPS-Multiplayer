@@ -1196,7 +1196,7 @@ MonoBehaviour:
   mouseSensitivity: 3
   sprintSpeed: 6
   walkSpeed: 3
-  jumpForce: 300
+  jumpForce: 250
   smoothTime: 0.15
   items:
   - {fileID: 6732414030161505931}
