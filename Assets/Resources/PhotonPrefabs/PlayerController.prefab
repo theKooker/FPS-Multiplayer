@@ -4871,7 +4871,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   transitionSpeed: 10
-  movementThreshold: 0.01
   playerController: {fileID: 8997055070651253307}
   pView: {fileID: 4501668947874606857}
 --- !u!114 &2734487408730868420

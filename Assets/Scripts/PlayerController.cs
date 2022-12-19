@@ -48,9 +48,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 	public event Action OnJump;
     public bool Grounded => _cc.isGrounded;
 	public float MaxSpeed => sprintSpeed;
-	public Vector3 Velocity => _velocity;
-	private Vector3 _velocity;
-	private Vector3 _oldPosition;
+	public Vector3 Velocity => _cc.velocity;
 
 	[SerializeField] private bool test = false;
 
@@ -74,8 +72,6 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 		initialCameraPosition = cameraHolder.transform.localPosition;
 		initialHeight = _cc.height;
 		initialCenter = _cc.center.y;
-		_velocity = Vector3.zero;
-		_oldPosition = transform.position;
 	}
 
 	void Start()
@@ -142,11 +138,6 @@ public class PlayerController : MonoBehaviourPunCallbacks, IDamageable
 		{
 			Die();
 		}
-	}
-
-	private void LateUpdate() {
-		_velocity = transform.position - _oldPosition;
-		_oldPosition = transform.position;
 	}
 
 	void Look()
