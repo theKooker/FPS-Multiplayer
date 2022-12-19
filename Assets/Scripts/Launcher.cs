@@ -5,6 +5,7 @@ using Photon.Pun;
 using TMPro;
 using Photon.Realtime;
 using System.Linq;
+using UnityEngine.SceneManagement;
 
 public class Launcher : MonoBehaviourPunCallbacks
 {
@@ -23,11 +24,37 @@ public class Launcher : MonoBehaviourPunCallbacks
 	{
 		Instance = this;
 	}
-
-	void Start()
+    IEnumerator Disconnect()
+    {
+        PhotonNetwork.Disconnect();
+        while (PhotonNetwork.IsConnected)
+        {
+            yield return null;
+        }
+        PhotonNetwork.OfflineMode = true;
+    }
+    void Start()
 	{
-		Debug.Log("Connecting to Master");
-		PhotonNetwork.ConnectUsingSettings();
+
+	}
+
+	public void OnlineMode()
+	{
+        if (Application.internetReachability != NetworkReachability.NotReachable)
+		{
+            Debug.Log("Connecting to Master");
+            PhotonNetwork.ConnectUsingSettings();
+            MenuManager.Instance.OpenMenu("loading");
+        } else
+		{
+			//
+		}
+
+    }
+
+	public void OfflineMode()
+	{
+		SceneManager.LoadScene(2);
 	}
 
 	public override void OnConnectedToMaster()
@@ -55,6 +82,10 @@ public class Launcher : MonoBehaviourPunCallbacks
 
 	public override void OnJoinedRoom()
 	{
+		if(PhotonNetwork.OfflineMode)
+		{
+			StartGame();
+		}
 		MenuManager.Instance.OpenMenu("room");
 		roomNameText.text = PhotonNetwork.CurrentRoom.Name;
 

@@ -26,7 +26,14 @@ public class SingleShotGun : Gun
 		if(Physics.Raycast(ray, out RaycastHit hit))
 		{
 			hit.collider.gameObject.GetComponent<IDamageable>()?.TakeDamage(((GunInfo)itemInfo).damage);
-			PV.RPC("RPC_Shoot", RpcTarget.All, hit.point, hit.normal);
+            if (Application.internetReachability == NetworkReachability.NotReachable)
+			{
+				Shoot(hit.point, hit.normal);
+			} else
+			{
+                PV.RPC("RPC_Shoot", RpcTarget.All, hit.point, hit.normal);
+            }
+                
 		}
 	}
 
@@ -41,4 +48,15 @@ public class SingleShotGun : Gun
 			bulletImpactObj.transform.SetParent(colliders[0].transform);
 		}
 	}
+
+    void Shoot(Vector3 hitPosition, Vector3 hitNormal)
+    {
+        Collider[] colliders = Physics.OverlapSphere(hitPosition, 0.3f);
+        if (colliders.Length != 0)
+        {
+            GameObject bulletImpactObj = Instantiate(bulletImpactPrefab, hitPosition + hitNormal * 0.001f, Quaternion.LookRotation(hitNormal, Vector3.up) * bulletImpactPrefab.transform.rotation);
+            Destroy(bulletImpactObj, 10f);
+            bulletImpactObj.transform.SetParent(colliders[0].transform);
+        }
+    }
 }
