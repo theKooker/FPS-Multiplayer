@@ -19,13 +19,14 @@ public class PlayerAnimationUpdater : MonoBehaviourPunCallbacks
     private Vector2 _animatorMovement;
     [SerializeField] private PlayerController playerController;
     [SerializeField] private PhotonView pView;
+    [SerializeField] private bool test = false;
 
     private void Awake() {
         _animator = GetComponent<Animator>();
     }
 
     private void Start() {
-        enabled = pView.IsMine;
+        enabled = test || pView.IsMine;
     }
 
     private void LateUpdate() {
