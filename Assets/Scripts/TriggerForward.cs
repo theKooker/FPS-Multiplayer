@@ -11,7 +11,7 @@ public class TriggerForward : MonoBehaviour
     private void OnTriggerEnter(Collider other) {
         OnEnter?.Invoke(other);
     }
-
+ 
     private void OnTriggerExit(Collider other) {
         OnExit?.Invoke(other);
     }
